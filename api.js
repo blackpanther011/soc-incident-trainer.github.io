@@ -2,7 +2,7 @@
 // SOC TRAINER v3.0 — Gemini API Module
 // ============================================================
 
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent";
 
 const SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
