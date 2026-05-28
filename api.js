@@ -4,7 +4,7 @@
 // "gemini" | "claude" | "openai"
 // ============================================================
 
-const PROVIDER = "claude";
+const PROVIDER = "gemini";
 
 async function callGemini(apiKey, systemPrompt, userMessage) {
   const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
