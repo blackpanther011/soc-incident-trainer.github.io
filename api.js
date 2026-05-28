@@ -11,13 +11,6 @@ const SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT",  threshold: "BLOCK_NONE" },
 ];
 
-/**
- * Calls the Gemini API with a system instruction and user message.
- * @param {string} apiKey
- * @param {string} systemPrompt
- * @param {string} userMessage
- * @returns {Promise<string>} - The model's text response
- */
 export async function callGemini(apiKey, systemPrompt, userMessage) {
   if (!apiKey || !apiKey.trim()) {
     throw new Error("Gemini API key is required. Get one free at aistudio.google.com.");
@@ -48,11 +41,9 @@ export async function callGemini(apiKey, systemPrompt, userMessage) {
   const data = await response.json();
 
   if (!response.ok) {
-    const msg = data?.error?.message || response.statusText;
-    if (response.status === 400) throw new Error(`Bad request: ${msg}`);
-    if (response.status === 403) throw new Error("Invalid API key — verify it at aistudio.google.com.");
-    if (response.status === 429) throw new Error("Rate limit hit — wait a moment and retry.");
-    throw new Error(`API Error ${response.status}: ${msg}`);
+    // Show the raw status + full message so we can diagnose exactly what's wrong
+    const msg = data?.error?.message || response.statusText || "Unknown error";
+    throw new Error(`[${response.status}] ${msg}`);
   }
 
   const candidate = data?.candidates?.[0];
@@ -61,7 +52,6 @@ export async function callGemini(apiKey, systemPrompt, userMessage) {
     throw new Error("No response generated. The safety filter may have blocked it.");
   }
 
-  // Check finish reason
   if (candidate.finishReason === "SAFETY") {
     throw new Error("Response blocked by Gemini safety filter. Try again.");
   }
