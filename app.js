@@ -12,6 +12,16 @@ import {
   CATEGORY_LABELS,
   RESPONSE_MODES,
 } from "./prompts.js";
+import {
+  renderMarkdown,
+  validateDifficulty,
+  validateCategory,
+  validateMode,
+  validateResponseInput,
+  checkRateLimit,
+  loadHistorySafe,
+  escapeHTML,
+} from "./security.js";
 
 // ─── State ────────────────────────────────────────────────────
 const state = {
@@ -467,9 +477,9 @@ function renderHistory() {
     const mode = RESPONSE_MODES[e.modeId];
     return `<div class="history-item" data-idx="${i}">
       <div class="history-meta">
-        <span class="history-cat">${e.categoryLabel}</span>
+        <span class="history-cat">${escapeHTML(e.categoryLabel || "")}</span>
         ${mode ? `<span class="history-mode-icon" title="${mode.label}">${mode.icon}</span>` : ""}
-        <span class="history-diff-tag">${e.difficultyLabel?.split("—")[0].trim()}</span>
+        <span class="history-diff-tag">${escapeHTML((e.difficultyLabel || "").split("—")[0].trim())}</span>
       </div>
       <div class="history-bottom">
         <span class="history-time">${e.timestamp}</span>
@@ -485,9 +495,9 @@ function renderHistory() {
       state.currentMode       = entry.modeId;
       state.currentDifficulty = entry.difficulty || state.currentDifficulty;
       state.currentCategory   = entry.category   || state.currentCategory;
-      scenarioOutput.innerHTML  = marked.parse(entry.scenario);
-      scenarioRecap.innerHTML   = marked.parse(entry.scenario);
-      evaluationOutput.innerHTML = marked.parse(entry.evaluation);
+      scenarioOutput.innerHTML  = renderMarkdown(entry.scenario);
+      scenarioRecap.innerHTML   = renderMarkdown(entry.scenario);
+      evaluationOutput.innerHTML = renderMarkdown(entry.evaluation);
       setEvalMeta(entry);
       animateScore(entry.score);
       buildModeGrid();
@@ -511,10 +521,9 @@ function setEvalMeta(entry) {
 }
 
 function loadHistory() {
-  try {
-    const saved = localStorage.getItem("soc_trainer_v3_history");
-    if (saved) { state.sessionHistory = JSON.parse(saved); updateStats(); renderHistory(); }
-  } catch(_) {}
+  state.sessionHistory = loadHistorySafe("soc_trainer_v3_history");
+  updateStats();
+  renderHistory();
 }
 
 // ─── Export ───────────────────────────────────────────────────
@@ -555,6 +564,15 @@ generateBtn.addEventListener("click", async () => {
   const apiKey = apiKeyEl.value.trim();
   if (!apiKey) { showToast("Enter your API key first.", "error"); apiKeyEl.focus(); return; }
 
+  // Rate limiting — prevent API spam
+  try { checkRateLimit("generate", 5000); } catch(e) { showToast(e.message, "error"); return; }
+
+  // Validate state values against allowlists
+  try {
+    validateDifficulty(state.currentDifficulty);
+    validateCategory(state.currentCategory);
+  } catch(e) { showToast(e.message, "error"); return; }
+
   state.currentMode  = null;
   state.hintsUsed    = 0;
   timerDisplay.textContent = "00:00";
@@ -572,8 +590,8 @@ generateBtn.addEventListener("click", async () => {
     state.currentScenario = scenario;
 
     // Populate step 2
-    scenarioOutput.innerHTML = marked.parse(scenario);
-    scenarioRecap.innerHTML  = marked.parse(scenario);
+    scenarioOutput.innerHTML = renderMarkdown(scenario);
+    scenarioRecap.innerHTML  = renderMarkdown(scenario);
     scenarioBadge.textContent = "ACTIVE INCIDENT";
     scenarioBadge.className   = "badge badge-danger";
 
@@ -617,11 +635,21 @@ generateBtn.addEventListener("click", async () => {
 // ─── Submit ───────────────────────────────────────────────────
 submitBtn.addEventListener("click", async () => {
   const apiKey  = apiKeyEl.value.trim();
-  const userPlan = responseInput.value.trim();
+  let userPlan;
 
-  if (!state.currentMode)  { showToast("Select a response mode first.", "error"); return; }
-  if (!userPlan)            { showToast("Write a response before submitting.", "error"); return; }
-  if (userPlan.length < 50) { showToast("Response too short — add more detail.", "error"); return; }
+  // Input validation via security module
+  try {
+    validateMode(state.currentMode || "");
+    userPlan = validateResponseInput(responseInput.value);
+  } catch(e) {
+    showToast(e.message, "error");
+    if (!state.currentMode) return;
+    if (!responseInput.value.trim()) return;
+    return;
+  }
+
+  // Rate limiting — evaluation is expensive
+  try { checkRateLimit("submit", 8000); } catch(e) { showToast(e.message, "error"); return; }
 
   stopTimer();
   const responseTime = state.timerSeconds;
@@ -643,7 +671,7 @@ submitBtn.addEventListener("click", async () => {
       buildEvaluationMessage(state.currentScenario, userPlan, state.currentMode)
     );
 
-    evaluationOutput.innerHTML = marked.parse(evaluation);
+    evaluationOutput.innerHTML = renderMarkdown(evaluation);
 
     const scoreMatch = evaluation.match(/##\s+Score:\s+(\d+(?:\.\d+)?)\/10/i);
     const score = scoreMatch ? parseFloat(scoreMatch[1]) : null;
@@ -703,6 +731,6 @@ reReviewBtn.addEventListener("click", () => {
 buildModeGrid();
 loadHistory();
 
-const savedKey = sessionStorage.getItem("soc_api_key");
-if (savedKey) apiKeyEl.value = savedKey;
-apiKeyEl.addEventListener("change", () => sessionStorage.setItem("soc_api_key", apiKeyEl.value));
+// API key intentionally NOT persisted to sessionStorage (VULN-002 fix)
+// Users must re-enter their key each session for security.
+// The password input field provides sufficient UX.
