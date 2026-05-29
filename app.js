@@ -1,5 +1,6 @@
 // ============================================================
 // SOC TRAINER v3.0 — Core Application
+// 3-step workflow: Configure → Respond → Evaluate
 // ============================================================
 
 import { callAPI } from "./api.js";
@@ -20,93 +21,152 @@ const state = {
   currentMode:       null,
   sessionHistory:    [],
   hintsUsed:         0,
-  maxHints:          3,
+  timerSeconds:      0,
 };
 
 // ─── DOM ──────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-const els = {
-  apiKey:          $("apiKey"),
-  difficulty:      $("difficulty"),
-  category:        $("category"),
-  generateBtn:     $("generateBtn"),
-  scenarioOutput:  $("scenarioOutput"),
-  scenarioBadge:   $("scenarioBadge"),
-  timerDisplay:    $("timerDisplay"),
-  modeGrid:        $("modeGrid"),
-  modePanel:       $("modePanel"),
-  modeHintText:    $("modeHintText"),
-  guidePanel:      $("guidePanel"),
-  guideIcon:       $("guideIcon"),
-  guideTitle:      $("guideTitle"),
-  guideBody:       $("guideBody"),
-  toggleGuide:     $("toggleGuide"),
-  responseInput:   $("responseInput"),
-  responseTitle:   $("responseTitle"),
-  charCount:       $("charCount"),
-  modeLabel:       $("modeLabel"),
-  frameworkToggle: $("frameworkToggle"),
-  submitBtn:       $("submitBtn"),
-  evaluationOutput:$("evaluationOutput"),
-  scoreDisplay:    $("scoreDisplay"),
-  scoreRing:       $("scoreRing"),
-  scoreNumber:     $("scoreNumber"),
-  historyList:     $("historyList"),
-  sessionCount:    $("sessionCount"),
-  avgScore:        $("avgScore"),
-  bestScore:       $("bestScore"),
-  exportBtn:       $("exportBtn"),
-  clearBtn:        $("clearBtn"),
-  toast:           $("toast"),
-  topbarMode:      $("topbarMode"),
-  hintBtn:         $("hintBtn"),
-  hintCount:       $("hintCount"),
-};
+
+// Pages & Nav
+const pages    = { 1: $("page1"),  2: $("page2"),  3: $("page3")  };
+const navBtns  = { 1: $("nav1"),   2: $("nav2"),   3: $("nav3")   };
+
+// Step 1
+const apiKeyEl       = $("apiKey");
+const diffGrid       = $("diffGrid");
+const catGrid        = $("catGrid");
+const diffHint       = $("diffHint");
+const generateBtn    = $("generateBtn");
+const sessionCount   = $("sessionCount");
+const avgScoreEl     = $("avgScore");
+const bestScoreEl    = $("bestScore");
+const historyList    = $("historyList");
+const clearBtn       = $("clearBtn");
+
+// Step 2
+const scenarioOutput  = $("scenarioOutput");
+const hintBtn         = $("hintBtn");
+const hintCount       = $("hintCount");
+const modeGrid        = $("modeGrid");
+const guideSection    = $("guideSection");
+const guideTitle      = $("guideTitle");
+const guideBody       = $("guideBody");
+const guideToggleHdr  = $("guideToggleHdr");
+const guideCollapseBtn= $("guideCollapseBtn");
+const responseTitle   = $("responseTitle");
+const responseInput   = $("responseInput");
+const charCount       = $("charCount");
+const frameworkToggle = $("frameworkToggle");
+const submitBtn       = $("submitBtn");
+const modeActiveLabel = $("modeActiveLabel");
+
+// Step 3
+const evaluationOutput= $("evaluationOutput");
+const scoreRing       = $("scoreRing");
+const scoreNumber     = $("scoreNumber");
+const scoreDisplay    = $("scoreDisplay");
+const scoreVerdict    = $("scoreVerdict");
+const evalMode        = $("evalMode");
+const evalCategory    = $("evalCategory");
+const evalDifficulty  = $("evalDifficulty");
+const evalTime        = $("evalTime");
+const tryAgainBtn     = $("tryAgainBtn");
+const reReviewBtn     = $("reReviewBtn");
+const scenarioRecap   = $("scenarioRecap");
+const scenarioRecapHdr= $("scenarioRecapHdr");
+const scenarioRecapBtn= $("scenarioRecapBtn");
+
+// Shared
+const timerDisplay  = $("timerDisplay");
+const scenarioBadge = $("scenarioBadge");
+const exportBtn     = $("exportBtn");
+const toastEl       = $("toast");
+
+// ─── Page Navigation ──────────────────────────────────────────
+function goToPage(n) {
+  Object.values(pages).forEach(p => p.classList.remove("page-active"));
+  pages[n].classList.add("page-active");
+
+  Object.entries(navBtns).forEach(([k, btn]) => {
+    btn.classList.remove("step-active", "step-done");
+    const num = parseInt(k);
+    if (num < n)      btn.classList.add("step-done");
+    else if (num === n) btn.classList.add("step-active");
+  });
+}
+
+navBtns[1].addEventListener("click", () => goToPage(1));
+navBtns[2].addEventListener("click", () => { if (!navBtns[2].disabled) goToPage(2); });
+navBtns[3].addEventListener("click", () => { if (!navBtns[3].disabled) goToPage(3); });
 
 // ─── Timer ────────────────────────────────────────────────────
 let timerInterval = null;
-let timerSeconds  = 0;
 function startTimer() {
-  stopTimer(); timerSeconds = 0;
+  stopTimer(); state.timerSeconds = 0;
   timerInterval = setInterval(() => {
-    timerSeconds++;
-    const m = String(Math.floor(timerSeconds / 60)).padStart(2,"0");
-    const s = String(timerSeconds % 60).padStart(2,"0");
-    els.timerDisplay.textContent = `${m}:${s}`;
+    state.timerSeconds++;
+    const m = String(Math.floor(state.timerSeconds / 60)).padStart(2,"0");
+    const s = String(state.timerSeconds % 60).padStart(2,"0");
+    timerDisplay.textContent = `${m}:${s}`;
   }, 1000);
 }
 function stopTimer() { clearInterval(timerInterval); }
 
 // ─── Toast ────────────────────────────────────────────────────
 function showToast(msg, type = "info") {
-  els.toast.textContent = msg;
-  els.toast.className = `toast toast-${type} show`;
-  setTimeout(() => els.toast.classList.remove("show"), 3500);
+  toastEl.textContent = msg;
+  toastEl.className = `toast toast-${type} show`;
+  setTimeout(() => toastEl.classList.remove("show"), 3500);
 }
 
+// ─── Difficulty Selector ──────────────────────────────────────
+const DIFF_HINTS = {
+  tier1: "Common attack vectors, straightforward observables, no lateral movement. ~15–20 min.",
+  tier2: "Moderate complexity — lateral movement, defense evasion, 2–3 log sources. ~20–30 min.",
+  tier3: "Multi-stage attack, active C2, ambiguous indicators, difficult tradeoffs. ~30–45 min.",
+  apt:   "Nation-state TTPs, living-off-the-land, long dwell time already established. ~45–60 min.",
+};
+
+diffGrid.querySelectorAll(".diff-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    diffGrid.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("diff-active"));
+    btn.classList.add("diff-active");
+    state.currentDifficulty = btn.dataset.diff;
+    diffHint.textContent = DIFF_HINTS[btn.dataset.diff];
+  });
+});
+
+catGrid.querySelectorAll(".cat-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    catGrid.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("cat-active"));
+    btn.classList.add("cat-active");
+    state.currentCategory = btn.dataset.cat;
+  });
+});
+
 // ─── Char Counter ─────────────────────────────────────────────
-els.responseInput.addEventListener("input", () => {
-  const len = els.responseInput.value.length;
-  els.charCount.textContent = `${len.toLocaleString()} chars`;
-  els.charCount.style.color =
+responseInput.addEventListener("input", () => {
+  const len = responseInput.value.length;
+  charCount.textContent = `${len.toLocaleString()} chars`;
+  charCount.style.color =
     len < 100 ? "var(--danger)" :
     len < 300 ? "var(--warning)" : "var(--success)";
 });
 
 // ─── Mode Grid ────────────────────────────────────────────────
 function buildModeGrid() {
-  els.modeGrid.innerHTML = Object.values(RESPONSE_MODES).map(mode => `
+  modeGrid.innerHTML = Object.values(RESPONSE_MODES).map(mode => `
     <button class="mode-card ${state.currentScenario ? "" : "mode-card-locked"}"
             data-mode="${mode.id}"
             ${state.currentScenario ? "" : "disabled"}
-            style="--mode-color: ${mode.color}">
+            style="--mode-color:${mode.color}">
       <span class="mode-card-icon">${mode.icon}</span>
       <span class="mode-card-label">${mode.label}</span>
       <span class="mode-card-desc">${mode.shortDesc}</span>
     </button>
   `).join("");
 
-  els.modeGrid.querySelectorAll(".mode-card").forEach(btn => {
+  modeGrid.querySelectorAll(".mode-card").forEach(btn => {
     btn.addEventListener("click", () => selectMode(btn.dataset.mode));
   });
 }
@@ -115,60 +175,54 @@ function selectMode(modeId) {
   state.currentMode = modeId;
   const mode = RESPONSE_MODES[modeId];
 
-  // Update mode cards UI
-  els.modeGrid.querySelectorAll(".mode-card").forEach(btn => {
-    btn.classList.toggle("mode-card-active", btn.dataset.mode === modeId);
+  modeGrid.querySelectorAll(".mode-card").forEach(b => {
+    b.classList.toggle("mode-active", b.dataset.mode === modeId);
   });
 
-  // Update topbar
-  els.topbarMode.textContent = `${mode.icon} ${mode.label}`;
-  els.topbarMode.style.color = mode.color;
-
-  // Show + populate guide
-  els.guidePanel.classList.remove("hidden");
-  els.guideIcon.textContent  = mode.icon;
-  els.guideTitle.textContent = `${mode.label} — Writing Guide`;
-  els.guideBody.innerHTML = mode.guide.map(item => `
-    <div class="guide-item">
-      <div class="guide-item-head">
-        <span class="guide-item-tag" style="background:${mode.color}20;color:${mode.color};border-color:${mode.color}40">${item.heading}</span>
-      </div>
-      <p class="guide-item-hint">${item.hint}</p>
+  // Show guide
+  guideSection.classList.remove("hidden");
+  guideTitle.textContent = `${mode.icon} ${mode.label} — Writing Guide`;
+  guideBody.innerHTML = mode.guide.map(item => `
+    <div class="guide-card">
+      <span class="guide-tag" style="background:${mode.color}18;color:${mode.color};border-color:${mode.color}40">${item.heading}</span>
+      <p class="guide-hint">${item.hint}</p>
     </div>
   `).join("");
 
-  // Update response panel
-  els.responseTitle.textContent = `Your ${mode.label}`;
-  els.modeLabel.textContent     = `${mode.icon} ${mode.label}`;
-  els.modeLabel.style.color     = mode.color;
-  els.responseInput.disabled    = false;
-  els.submitBtn.disabled        = false;
-  els.responseInput.value       = "";
-  els.responseInput.dispatchEvent(new Event("input"));
-  els.responseInput.focus();
+  // Response panel
+  responseTitle.textContent = `✍️ Your ${mode.label}`;
+  modeActiveLabel.textContent = `${mode.icon} ${mode.label} selected`;
+  modeActiveLabel.style.color = mode.color;
+  responseInput.disabled = false;
+  submitBtn.disabled     = false;
+  responseInput.value    = "";
+  responseInput.dispatchEvent(new Event("input"));
 
-  // Update placeholder based on mode
   const placeholders = {
-    ir:           "Draft your Incident Response Plan…\n\nStart with immediate Containment steps, then Eradication, Recovery, and Communication. Reference the writing guide above for what to cover in each phase.",
-    threat_hunt:  "Draft your Threat Hunt…\n\nStart with your hypothesis, then describe which data sources you'll query, the logic of your queries, and how you'll pivot on findings.",
-    forensic:     "Draft your Forensic Investigation plan…\n\nStart with evidence preservation (order of volatility), then list artifacts to collect, how you'll build a timeline, and your malware analysis approach.",
-    executive:    "Draft your Executive Briefing…\n\nWrite as if presenting to a CFO or Board. No jargon. Lead with business impact, current status (RAG), actions taken, and what decisions you need from them.",
-    ctf:          "Hunt for flags…\n\nList every IOC you can extract from the scenario, reconstruct the full attack chain, map to MITRE ATT&CK technique IDs, and answer the key questions in the scenario.",
+    ir:          "Draft your Incident Response Plan…\n\nCover: Containment → Eradication → Recovery → Communication\nUse the writing guide above. Click Template for a pre-structured starting point.",
+    threat_hunt: "Draft your Threat Hunt…\n\nStart with your hypothesis, then describe data sources, query logic, pivot points, and scope assessment.",
+    forensic:    "Draft your Forensic Investigation plan…\n\nStart with evidence preservation (order of volatility), artifacts to collect, timeline reconstruction, and analysis approach.",
+    executive:   "Draft your Executive Briefing…\n\nNo jargon. Lead with impact, current status (RAG rating), what's been done, and what decisions you need from leadership.",
+    ctf:         "Hunt for flags…\n\nList every IOC from the scenario, reconstruct the attack chain, map to MITRE ATT&CK IDs, answer the key questions.",
   };
-  els.responseInput.placeholder = placeholders[modeId] || "Draft your response here…";
-
-  showToast(`Mode: ${mode.label}`, "info");
+  responseInput.placeholder = placeholders[modeId] || "Draft your response…";
+  showToast(`Mode: ${mode.icon} ${mode.label}`, "info");
 }
 
 // ─── Guide Toggle ─────────────────────────────────────────────
-els.toggleGuide.addEventListener("click", () => {
-  const body = els.guideBody;
-  const hidden = body.style.display === "none";
-  body.style.display = hidden ? "" : "none";
-  els.toggleGuide.textContent = hidden ? "Hide Guide" : "Show Guide";
+guideToggleHdr.addEventListener("click", () => {
+  const hidden = guideBody.style.display === "none";
+  guideBody.style.display = hidden ? "" : "none";
+  guideCollapseBtn.textContent = hidden ? "▼ Hide" : "▶ Show";
 });
 
-// ─── Framework Template ───────────────────────────────────────
+// ─── Scenario Recap Toggle ────────────────────────────────────
+scenarioRecapHdr.addEventListener("click", () => {
+  const hidden = scenarioRecap.classList.toggle("hidden");
+  scenarioRecapBtn.textContent = hidden ? "▶" : "▼";
+});
+
+// ─── Framework Templates ──────────────────────────────────────
 const TEMPLATES = {
   ir: `## CONTAINMENT
 ### Immediate (0–4 hours):
@@ -181,7 +235,7 @@ const TEMPLATES = {
 ### Root Cause Removal:
 - 
 
-### Verification:
+### Verification Steps:
 - 
 
 ## RECOVERY
@@ -200,61 +254,67 @@ const TEMPLATES = {
 
 ## POST-INCIDENT
 ### Root Cause Summary:
+
 ### Lessons Learned:
-### Detection Gaps:`,
+
+### Detection Gaps Identified:`,
 
   threat_hunt: `## HYPOTHESIS
-Threat actor is [doing X] based on [observed evidence Y].
+Threat actor is [X] based on observed evidence [Y].
 
 ## DATA SOURCES
 - 
 - 
 
 ## HUNT QUERIES
-### Query 1:
+### Query 1 — [describe what you're hunting]:
 Logic: 
 
-### Query 2:
+### Query 2 — [describe what you're hunting]:
 Logic: 
 
 ## PIVOT POINTS
-- IOC 1 → pivot to:
-- IOC 2 → pivot to:
+- IOC → pivot to:
+- IOC → pivot to:
 
 ## SCOPE ASSESSMENT
 ### Compromised Hosts:
 ### Compromised Accounts:
-### Data Repositories at Risk:`,
+### Data at Risk:`,
 
   forensic: `## EVIDENCE PRESERVATION
 ### Order of Volatility:
-1. 
-2. 
-3. 
+1. RAM / running processes
+2. Network state
+3. Disk image
 
 ### Chain of Custody:
 - Collected by:
 - Date/Time:
-- Hash verification:
+- Hash (MD5/SHA256):
 
 ## ARTIFACT COLLECTION
 ### Windows Artifacts:
-- 
+- Prefetch files (C:\\Windows\\Prefetch)
+- Event logs (Security, System, Application)
+- Registry hives (NTUSER.DAT, SYSTEM, SAM)
+
 ### Network Artifacts:
 - 
 
 ## TIMELINE RECONSTRUCTION
-| Timestamp | Event | Source |
+| Timestamp | Event | Source Log |
 |---|---|---|
 |  |  |  |
 
 ## MALWARE ANALYSIS
-### Static Analysis:
-### Dynamic Analysis:
+### Static Analysis (hashes, strings, imports):
+
+### Dynamic Analysis (behavior, C2, persistence):
 
 ## CONCLUSIONS
 ### Root Cause:
-### Attribution Confidence:`,
+### Attribution Confidence Level:`,
 
   executive: `## SITUATION SUMMARY
 [2–3 sentences. What happened, when, what systems affected. No jargon.]
@@ -262,41 +322,43 @@ Logic:
 ## BUSINESS IMPACT
 - Affected systems:
 - Estimated downtime:
-- Data exposure:
+- Customer/data exposure:
 - Regulatory implications:
 - Revenue impact estimate:
 
 ## CURRENT STATUS
-🔴 RED / 🟡 AMBER / 🟢 GREEN
+🔴 RED — Active threat / 🟡 AMBER — Contained / 🟢 GREEN — Resolved
 
-[One sentence explaining current risk level]
+[One sentence on current risk level]
 
 ## ACTIONS TAKEN
 - 
 - 
 
-## NEXT STEPS & DECISIONS REQUIRED
-- [ ] Decision needed:
-- [ ] Budget approval needed:
-- [ ] Legal counsel engagement:`,
+## DECISIONS REQUIRED FROM LEADERSHIP
+- [ ] 
+- [ ] 
+- [ ] `,
 
   ctf: `## IOC EXTRACTION
 ### IP Addresses:
+- 
 ### Domains / URLs:
+- 
 ### File Hashes:
-### File Paths:
-### Registry Keys:
+- 
+### File Paths / Registry Keys:
+- 
 ### Usernames / Accounts:
-### CVEs / Exploits:
+- 
 
-## ATTACK CHAIN
+## ATTACK CHAIN RECONSTRUCTION
 1. Initial Access:
 2. Execution:
 3. Persistence:
 4. Privilege Escalation:
 5. Lateral Movement:
-6. Collection:
-7. Exfiltration:
+6. Collection / Exfiltration:
 
 ## MITRE ATT&CK MAPPING
 | Technique ID | Name | Evidence |
@@ -306,100 +368,109 @@ Logic:
 ## CRITICAL ANSWERS
 - Patient Zero:
 - Initial Vector:
-- First Malicious Action (timestamp):
+- First Malicious Timestamp:
 - Data Accessed/Exfiltrated:
 - C2 Infrastructure:
 - Total Dwell Time:
 
 ## RED HERRINGS IDENTIFIED
--`,
+- `,
 };
 
-els.frameworkToggle.addEventListener("click", () => {
+frameworkToggle.addEventListener("click", () => {
   if (!state.currentMode) { showToast("Select a response mode first.", "error"); return; }
-  const template = TEMPLATES[state.currentMode] || "";
-  if (els.responseInput.value.trim() && els.responseInput.value !== template) {
-    if (!confirm("Replace current notes with template?")) return;
+  const tmpl = TEMPLATES[state.currentMode] || "";
+  if (responseInput.value.trim() && responseInput.value !== tmpl) {
+    if (!confirm("Replace current notes with the template?")) return;
   }
-  els.responseInput.value = template;
-  els.responseInput.dispatchEvent(new Event("input"));
+  responseInput.value = tmpl;
+  responseInput.dispatchEvent(new Event("input"));
+  responseInput.focus();
 });
 
 // ─── Hints ────────────────────────────────────────────────────
 const HINTS = {
-  ransomware:   ["Check vssadmin and wmic for shadow copy deletion commands — these are almost always part of ransomware pre-encryption.", "Look at network shares — ransomware typically encrypts mapped drives. Check which users had share access.", "Search for staging directories — ransomware often exfiltrates before encrypting. Look for unusual ZIP or RAR creation events."],
-  apt:          ["Long-term C2 beaconing often uses jitter to avoid detection. Look for periodic outbound connections with slight timing variations.", "Check WMI event subscriptions and scheduled tasks — APT groups love persistence via these mechanisms.", "Look at DNS queries — DGA (Domain Generation Algorithm) C2 creates high-volume failed DNS lookups."],
-  insider:      ["Cloud storage sync tools (OneDrive, Dropbox, Google Drive) running outside business hours is a key indicator.", "DLP alerts alone aren't enough — correlate with badge access logs and VPN data to build the full picture.", "Check print logs and USB device connection events in Windows — physical exfiltration is often overlooked."],
-  cloud:        ["Cloudtrail / Audit logs: look for GetSecretValue, AssumeRole, and CreateAccessKey calls from unusual IPs.", "Check for new IAM users or roles created — attackers often create backdoor accounts immediately after gaining access.", "Look for S3 GetObject calls in bulk, especially from IPs not in your organization's normal egress range."],
-  supply_chain: ["Compare the hash of the software binary against the vendor's published hash on their website.", "Legitimate software doing network calls to unknown domains is the biggest red flag in supply chain attacks.", "Check the digital signature — valid certificate but from an unexpected issuer is a major warning sign."],
-  web:          ["Check web server logs for the exact request that triggered the alert — the payload is often visible in the URL or POST body.", "Web shells usually have file names that look legitimate (info.php, admin.aspx) — look for recently created PHP/ASPX files.", "After a web shell is planted, look for child processes spawned by the web server process (w3wp.exe, httpd, nginx)."],
+  ransomware:   ["Check vssadmin and wmic — shadow copy deletion via 'vssadmin delete shadows /all /quiet' is almost universal in ransomware pre-encryption.", "Look at network shares and mapped drives. Ransomware targets these. Check which user accounts had write access.", "Search for staging directories and large archive creation (ZIP, RAR, 7z) before encryption — exfiltration often precedes encryption."],
+  apt:          ["C2 beaconing uses jitter to avoid detection. Look for periodic outbound connections with slight timing variations (not perfectly regular).", "Check WMI event subscriptions and scheduled tasks — these are top APT persistence mechanisms.", "Look at DNS query logs for DGA patterns — high-volume failed lookups to random-looking domains indicate C2."],
+  insider:      ["Cloud sync tools (OneDrive, Dropbox, Google Drive) active outside business hours or syncing unusual volumes is a primary indicator.", "Correlate DLP alerts with physical access logs and VPN data to build the complete picture.", "Check print logs and USB device connection events — physical exfiltration vectors are commonly missed."],
+  cloud:        ["Look for GetSecretValue, AssumeRole, and CreateAccessKey API calls in CloudTrail from unusual source IPs or at unusual times.", "Attackers create backdoor IAM users or roles immediately after gaining access. Look for new IAM entity creation events.", "Bulk S3 GetObject calls from non-organizational IPs — especially to sensitive buckets — indicate exfiltration."],
+  supply_chain: ["Compare the binary hash against the vendor's published hash on their official website or release notes.", "Legitimate software making outbound connections to unknown domains post-update is the primary red flag.", "Inspect the digital signature carefully — valid certificate from an unexpected or newly created issuer is suspicious."],
+  web:          ["Check raw web server logs for the exact request — the exploit payload is often visible in the URL or POST body.", "Web shells use legitimate-looking filenames (info.php, admin.aspx, config.php) — look for recently created or modified script files.", "After web shell placement, look for child processes spawned by the web server process (w3wp.exe, httpd, nginx spawning cmd.exe or powershell.exe)."],
 };
 
-els.hintBtn.addEventListener("click", () => {
+hintBtn.addEventListener("click", () => {
   const hints = HINTS[state.currentCategory] || [];
   if (state.hintsUsed >= hints.length) { showToast("No more hints available.", "info"); return; }
-  const hint = hints[state.hintsUsed];
+  showToast(`💡 ${hints[state.hintsUsed]}`, "info");
   state.hintsUsed++;
-  els.hintCount.textContent = state.maxHints - state.hintsUsed;
-  showToast(`💡 Hint: ${hint}`, "info");
-  if (state.hintsUsed >= hints.length) els.hintBtn.disabled = true;
+  hintCount.textContent = Math.max(0, hints.length - state.hintsUsed);
+  if (state.hintsUsed >= hints.length) { hintBtn.disabled = true; hintBtn.style.opacity = "0.4"; }
 });
 
-// ─── Score Ring ───────────────────────────────────────────────
+// ─── Score Ring Animation ─────────────────────────────────────
 function animateScore(score) {
-  const circumference = 2 * Math.PI * 36;
+  const r = 68;
+  const circumference = 2 * Math.PI * r;
   const offset = circumference - (score / 10) * circumference;
   const color = score >= 8 ? "var(--success)" : score >= 5 ? "var(--warning)" : "var(--danger)";
-  els.scoreRing.style.strokeDasharray  = `${circumference}`;
-  els.scoreRing.style.strokeDashoffset = `${circumference}`;
-  els.scoreRing.style.stroke           = color;
-  els.scoreNumber.style.color          = color;
-  els.scoreDisplay.classList.remove("hidden");
+
+  scoreRing.style.stroke = color;
+  scoreRing.style.strokeDasharray = `${circumference}`;
+  scoreRing.style.strokeDashoffset = `${circumference}`;
+  scoreNumber.style.color = color;
+
   requestAnimationFrame(() => {
-    els.scoreRing.style.transition = "stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)";
-    els.scoreRing.style.strokeDashoffset = `${offset}`;
+    scoreRing.style.strokeDashoffset = `${offset}`;
   });
-  let current = 0;
-  const step = score / 30;
+
+  let cur = 0;
+  const step = score / 35;
   const counter = setInterval(() => {
-    current = Math.min(current + step, score);
-    els.scoreNumber.textContent = current.toFixed(1);
-    if (current >= score) { els.scoreNumber.textContent = score; clearInterval(counter); }
+    cur = Math.min(cur + step, score);
+    scoreNumber.textContent = cur.toFixed(1);
+    if (cur >= score) { scoreNumber.textContent = score; clearInterval(counter); }
   }, 40);
+
+  const verdicts = {
+    "9-10": "Outstanding — operational standard met.",
+    "7-8":  "Solid response — minor gaps to address.",
+    "5-6":  "Adequate — significant room for improvement.",
+    "3-4":  "Concerning — would likely fail in production.",
+    "1-2":  "Critical failures — would cause active harm.",
+  };
+  const v = score >= 9 ? "9-10" : score >= 7 ? "7-8" : score >= 5 ? "5-6" : score >= 3 ? "3-4" : "1-2";
+  scoreVerdict.textContent = verdicts[v];
+  scoreVerdict.style.color = color;
+  scoreDisplay.classList.remove("hidden");
 }
 
-// ─── Stats ────────────────────────────────────────────────────
+// ─── Stats & History ──────────────────────────────────────────
 function updateStats() {
   const h = state.sessionHistory;
-  els.sessionCount.textContent = h.length;
-  if (!h.length) { els.avgScore.textContent = "—"; els.bestScore.textContent = "—"; return; }
+  sessionCount.textContent = h.length;
+  if (!h.length) { avgScoreEl.textContent = "—"; bestScoreEl.textContent = "—"; return; }
   const scores = h.map(x => x.score);
-  els.avgScore.textContent  = (scores.reduce((a,b) => a+b,0)/scores.length).toFixed(1);
-  els.bestScore.textContent = Math.max(...scores);
+  avgScoreEl.textContent  = (scores.reduce((a,b) => a+b,0)/scores.length).toFixed(1);
+  bestScoreEl.textContent = Math.max(...scores);
 }
 
-// ─── History ──────────────────────────────────────────────────
-function addHistoryEntry(entry) {
+function addHistory(entry) {
   state.sessionHistory.unshift(entry);
-  updateStats();
-  renderHistory();
-  try { localStorage.setItem("soc_trainer_history", JSON.stringify(state.sessionHistory)); } catch(_) {}
+  updateStats(); renderHistory();
+  try { localStorage.setItem("soc_trainer_v3_history", JSON.stringify(state.sessionHistory)); } catch(_) {}
 }
 
 function renderHistory() {
-  if (!state.sessionHistory.length) {
-    els.historyList.innerHTML = `<div class="history-empty">No sessions yet.</div>`;
-    return;
-  }
-  els.historyList.innerHTML = state.sessionHistory.map((e, i) => {
-    const cls = e.score >= 8 ? "score-high" : e.score >= 5 ? "score-mid" : "score-low";
+  if (!state.sessionHistory.length) { historyList.innerHTML = `<div class="history-empty">No sessions yet.</div>`; return; }
+  historyList.innerHTML = state.sessionHistory.map((e, i) => {
+    const cls  = e.score >= 8 ? "score-high" : e.score >= 5 ? "score-mid" : "score-low";
     const mode = RESPONSE_MODES[e.modeId];
     return `<div class="history-item" data-idx="${i}">
       <div class="history-meta">
         <span class="history-cat">${e.categoryLabel}</span>
-        ${mode ? `<span class="history-mode-badge" style="color:${mode.color}">${mode.icon}</span>` : ""}
+        ${mode ? `<span class="history-mode-icon" title="${mode.label}">${mode.icon}</span>` : ""}
+        <span class="history-diff-tag">${e.difficultyLabel?.split("—")[0].trim()}</span>
       </div>
-      <div class="history-diff">${e.difficultyLabel}</div>
       <div class="history-bottom">
         <span class="history-time">${e.timestamp}</span>
         <span class="history-score ${cls}">${e.score}/10</span>
@@ -407,130 +478,163 @@ function renderHistory() {
     </div>`;
   }).join("");
 
-  els.historyList.querySelectorAll(".history-item").forEach(el => {
+  historyList.querySelectorAll(".history-item").forEach(el => {
     el.addEventListener("click", () => {
       const entry = state.sessionHistory[parseInt(el.dataset.idx)];
-      els.scenarioOutput.innerHTML   = marked.parse(entry.scenario);
-      els.evaluationOutput.innerHTML = marked.parse(entry.evaluation);
+      state.currentScenario   = entry.scenario;
+      state.currentMode       = entry.modeId;
+      state.currentDifficulty = entry.difficulty || state.currentDifficulty;
+      state.currentCategory   = entry.category   || state.currentCategory;
+      scenarioOutput.innerHTML  = marked.parse(entry.scenario);
+      scenarioRecap.innerHTML   = marked.parse(entry.scenario);
+      evaluationOutput.innerHTML = marked.parse(entry.evaluation);
+      setEvalMeta(entry);
       animateScore(entry.score);
+      buildModeGrid();
       if (entry.modeId) selectMode(entry.modeId);
+      navBtns[2].disabled = false;
+      navBtns[3].disabled = false;
+      goToPage(3);
       showToast("Loaded past session", "info");
     });
   });
 }
 
+function setEvalMeta(entry) {
+  const mode = RESPONSE_MODES[entry.modeId];
+  evalMode.textContent      = mode ? `${mode.icon} ${mode.label}` : "—";
+  evalCategory.textContent  = entry.categoryLabel || "—";
+  evalDifficulty.textContent = entry.difficultyLabel?.split("—")[1]?.trim() || "—";
+  const m = Math.floor((entry.responseTime || 0) / 60);
+  const s = ((entry.responseTime || 0) % 60).toString().padStart(2,"0");
+  evalTime.textContent = entry.responseTime ? `${m}m ${s}s` : "—";
+}
+
 function loadHistory() {
   try {
-    const saved = localStorage.getItem("soc_trainer_history");
+    const saved = localStorage.getItem("soc_trainer_v3_history");
     if (saved) { state.sessionHistory = JSON.parse(saved); updateStats(); renderHistory(); }
   } catch(_) {}
 }
 
 // ─── Export ───────────────────────────────────────────────────
-els.exportBtn.addEventListener("click", () => {
-  if (!state.currentScenario) { showToast("No active session to export.", "error"); return; }
-  const e = state.sessionHistory[0];
+exportBtn.addEventListener("click", () => {
+  if (!state.currentScenario) { showToast("No session to export.", "error"); return; }
+  const e    = state.sessionHistory[0];
   const mode = state.currentMode ? RESPONSE_MODES[state.currentMode] : null;
   const content = [
     `# SOC TRAINER — SESSION EXPORT`,
     `**Date:** ${new Date().toLocaleString()}`,
     `**Difficulty:** ${DIFFICULTY_LABELS[state.currentDifficulty]}`,
     `**Category:** ${CATEGORY_LABELS[state.currentCategory]}`,
-    mode ? `**Response Mode:** ${mode.icon} ${mode.label}` : "",
+    mode ? `**Mode:** ${mode.icon} ${mode.label}` : "",
     e?.score ? `**Score:** ${e.score}/10` : "",
-    `\n---\n`,
-    `## SCENARIO\n\n${state.currentScenario}`,
+    `\n---\n\n## SCENARIO\n\n${state.currentScenario}`,
     e?.userPlan    ? `\n---\n\n## YOUR RESPONSE\n\n${e.userPlan}` : "",
     e?.evaluation  ? `\n---\n\n## EVALUATION\n\n${e.evaluation}` : "",
   ].join("\n");
+
   const blob = new Blob([content], { type: "text/markdown" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `soc-session-${Date.now()}.md`;
-  a.click();
+  a.href = url; a.download = `soc-session-${Date.now()}.md`; a.click();
   URL.revokeObjectURL(url);
   showToast("Session exported.", "success");
 });
 
-els.clearBtn.addEventListener("click", () => {
+clearBtn.addEventListener("click", () => {
   if (!confirm("Clear all history?")) return;
   state.sessionHistory = [];
-  localStorage.removeItem("soc_trainer_history");
+  localStorage.removeItem("soc_trainer_v3_history");
   updateStats(); renderHistory();
   showToast("History cleared.", "info");
 });
 
 // ─── Generate ─────────────────────────────────────────────────
-els.generateBtn.addEventListener("click", async () => {
-  const apiKey = els.apiKey.value.trim();
-  if (!apiKey) { showToast("Enter your API key first.", "error"); els.apiKey.focus(); return; }
+generateBtn.addEventListener("click", async () => {
+  const apiKey = apiKeyEl.value.trim();
+  if (!apiKey) { showToast("Enter your API key first.", "error"); apiKeyEl.focus(); return; }
 
-  state.currentDifficulty = els.difficulty.value;
-  state.currentCategory   = els.category.value;
-  state.currentMode       = null;
-  state.hintsUsed         = 0;
+  state.currentMode  = null;
+  state.hintsUsed    = 0;
+  timerDisplay.textContent = "00:00";
 
-  els.generateBtn.disabled   = true;
-  els.generateBtn.innerHTML  = `<span class="btn-spinner"></span> Generating...`;
-  els.scenarioOutput.innerHTML = `<div class="loading-pulse"><div class="pulse-line w80"></div><div class="pulse-line w60"></div><div class="pulse-line w90"></div><div class="pulse-line w50"></div><div class="pulse-line w70"></div></div>`;
-  els.scenarioBadge.textContent = "GENERATING...";
-  els.scenarioBadge.className   = "badge badge-warning";
-  els.scoreDisplay.classList.add("hidden");
-
-  // Reset mode/response/evaluation
-  els.topbarMode.textContent      = "No mode selected";
-  els.topbarMode.style.color      = "";
-  els.guidePanel.classList.add("hidden");
-  els.responseInput.disabled      = true;
-  els.responseInput.value         = "";
-  els.submitBtn.disabled          = true;
-  els.evaluationOutput.innerHTML  = `<div class="eval-idle"><div class="eval-idle-icon">⌛</div><p>Select a mode and submit your response.</p></div>`;
-  els.modeHintText.textContent    = "Choose how you want to respond to this incident";
+  generateBtn.disabled  = true;
+  generateBtn.innerHTML = `<span class="btn-spinner"></span> Generating...`;
 
   try {
-    const scenario = await callAPI(apiKey, buildScenarioPrompt(state.currentDifficulty, state.currentCategory), "Generate a new incident response scenario now.");
+    const scenario = await callAPI(
+      apiKey,
+      buildScenarioPrompt(state.currentDifficulty, state.currentCategory),
+      "Generate a new incident response scenario now."
+    );
+
     state.currentScenario = scenario;
-    els.scenarioOutput.innerHTML  = marked.parse(scenario);
-    els.scenarioBadge.textContent = "ACTIVE INCIDENT";
-    els.scenarioBadge.className   = "badge badge-danger";
 
-    // Enable mode grid
+    // Populate step 2
+    scenarioOutput.innerHTML = marked.parse(scenario);
+    scenarioRecap.innerHTML  = marked.parse(scenario);
+    scenarioBadge.textContent = "ACTIVE INCIDENT";
+    scenarioBadge.className   = "badge badge-danger";
+
+    // Reset step 2 state
     buildModeGrid();
-    els.hintBtn.classList.remove("hidden");
-    els.hintCount.textContent = state.maxHints;
-    els.hintBtn.disabled      = false;
-    els.modeHintText.textContent = "Pick a mode to begin — the writing guide will appear automatically";
+    guideSection.classList.add("hidden");
+    responseInput.disabled = true;
+    responseInput.value    = "";
+    responseInput.dispatchEvent(new Event("input"));
+    submitBtn.disabled     = true;
+    modeActiveLabel.textContent = "No mode selected";
+    modeActiveLabel.style.color = "";
+    hintBtn.classList.remove("hidden");
+    hintBtn.disabled   = false;
+    hintBtn.style.opacity = "1";
+    hintCount.textContent = "3";
 
+    // Reset step 3
+    evaluationOutput.innerHTML = `<div class="eval-idle"><div class="eval-idle-icon">⌛</div><p>Submit your response to receive evaluation.</p></div>`;
+    scoreNumber.textContent = "—";
+    scoreNumber.style.color = "";
+    scoreDisplay.classList.add("hidden");
+    scenarioRecap.classList.add("hidden");
+    scenarioRecapBtn.textContent = "▶";
+
+    // Unlock nav & go to step 2
+    navBtns[2].disabled = false;
+    navBtns[3].disabled = true;
+    goToPage(2);
     startTimer();
-    showToast("Incident generated. Select a response mode to begin.", "success");
+    showToast("Incident generated — select a response mode to begin.", "success");
 
   } catch(err) {
-    els.scenarioOutput.innerHTML  = `<div class="error-state">⚠ ${err.message}</div>`;
-    els.scenarioBadge.textContent = "ERROR";
-    els.scenarioBadge.className   = "badge badge-danger";
     showToast(err.message, "error");
   } finally {
-    els.generateBtn.disabled   = false;
-    els.generateBtn.innerHTML  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Generate Incident`;
+    generateBtn.disabled  = false;
+    generateBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Generate Incident`;
   }
 });
 
 // ─── Submit ───────────────────────────────────────────────────
-els.submitBtn.addEventListener("click", async () => {
-  const apiKey  = els.apiKey.value.trim();
-  const userPlan = els.responseInput.value.trim();
+submitBtn.addEventListener("click", async () => {
+  const apiKey  = apiKeyEl.value.trim();
+  const userPlan = responseInput.value.trim();
 
-  if (!state.currentMode) { showToast("Select a response mode first.", "error"); return; }
-  if (!userPlan)           { showToast("Write a response before submitting.", "error"); return; }
-  if (userPlan.length < 50){ showToast("Response too short — add more detail.", "error"); return; }
+  if (!state.currentMode)  { showToast("Select a response mode first.", "error"); return; }
+  if (!userPlan)            { showToast("Write a response before submitting.", "error"); return; }
+  if (userPlan.length < 50) { showToast("Response too short — add more detail.", "error"); return; }
 
   stopTimer();
+  const responseTime = state.timerSeconds;
 
-  els.submitBtn.disabled     = true;
-  els.responseInput.disabled = true;
-  els.submitBtn.innerHTML    = `<span class="btn-spinner"></span> Evaluating...`;
-  els.evaluationOutput.innerHTML = `<div class="loading-pulse"><div class="pulse-line w70"></div><div class="pulse-line w90"></div><div class="pulse-line w50"></div><div class="pulse-line w80"></div><div class="pulse-line w60"></div></div>`;
+  submitBtn.disabled     = true;
+  responseInput.disabled = true;
+  submitBtn.innerHTML    = `<span class="btn-spinner"></span> Evaluating...`;
+
+  // Pre-navigate to step 3 with loading state
+  navBtns[3].disabled = false;
+  goToPage(3);
+  scoreNumber.textContent  = "…";
+  evaluationOutput.innerHTML = `<div class="loading-pulse"><div class="pulse-line w70"></div><div class="pulse-line w90"></div><div class="pulse-line w50"></div><div class="pulse-line w80"></div><div class="pulse-line w60"></div><div class="pulse-line w75"></div></div>`;
 
   try {
     const evaluation = await callAPI(
@@ -539,38 +643,60 @@ els.submitBtn.addEventListener("click", async () => {
       buildEvaluationMessage(state.currentScenario, userPlan, state.currentMode)
     );
 
-    els.evaluationOutput.innerHTML = marked.parse(evaluation);
+    evaluationOutput.innerHTML = marked.parse(evaluation);
 
     const scoreMatch = evaluation.match(/##\s+Score:\s+(\d+(?:\.\d+)?)\/10/i);
     const score = scoreMatch ? parseFloat(scoreMatch[1]) : null;
 
     if (score !== null) {
       animateScore(score);
-      addHistoryEntry({
-        score,
+      const entry = {
+        score, responseTime,
         scenario:        state.currentScenario,
         evaluation,
         userPlan,
         modeId:          state.currentMode,
         categoryLabel:   CATEGORY_LABELS[state.currentCategory],
         difficultyLabel: DIFFICULTY_LABELS[state.currentDifficulty],
+        category:        state.currentCategory,
+        difficulty:      state.currentDifficulty,
         timestamp:       new Date().toLocaleTimeString(),
-      });
-      const verdict = score >= 8 ? "Excellent work." : score >= 5 ? "Needs improvement." : "Critical failures detected.";
-      showToast(`Score: ${score}/10 — ${verdict}`, score >= 7 ? "success" : "error");
+      };
+      addHistory(entry);
+      setEvalMeta(entry);
+      const v = score >= 8 ? "Excellent work." : score >= 5 ? "Needs improvement." : "Critical failures detected.";
+      showToast(`Score: ${score}/10 — ${v}`, score >= 7 ? "success" : "error");
     }
 
-    els.scenarioBadge.textContent = "EVALUATED";
-    els.scenarioBadge.className   = "badge badge-neutral";
+    scenarioBadge.textContent = "EVALUATED";
+    scenarioBadge.className   = "badge badge-neutral";
 
   } catch(err) {
-    els.evaluationOutput.innerHTML = `<div class="error-state">⚠ ${err.message}</div>`;
+    evaluationOutput.innerHTML = `<div class="error-state">⚠ ${err.message}</div>`;
     showToast(err.message, "error");
+    goToPage(2);
   } finally {
-    els.submitBtn.disabled     = false;
-    els.responseInput.disabled = false;
-    els.submitBtn.innerHTML    = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Submit for Evaluation`;
+    submitBtn.disabled     = false;
+    responseInput.disabled = false;
+    submitBtn.innerHTML    = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Submit for Evaluation`;
   }
+});
+
+// ─── Step 3 Actions ───────────────────────────────────────────
+tryAgainBtn.addEventListener("click", () => {
+  scenarioBadge.textContent = "IDLE";
+  scenarioBadge.className   = "badge badge-neutral";
+  navBtns[2].disabled       = true;
+  navBtns[3].disabled       = true;
+  timerDisplay.textContent  = "00:00";
+  goToPage(1);
+});
+
+reReviewBtn.addEventListener("click", () => {
+  goToPage(2);
+  responseInput.disabled = false;
+  submitBtn.disabled     = !state.currentMode;
+  showToast("Revise your response and resubmit.", "info");
 });
 
 // ─── Init ─────────────────────────────────────────────────────
@@ -578,8 +704,5 @@ buildModeGrid();
 loadHistory();
 
 const savedKey = sessionStorage.getItem("soc_api_key");
-if (savedKey) els.apiKey.value = savedKey;
-els.apiKey.addEventListener("change", () => sessionStorage.setItem("soc_api_key", els.apiKey.value));
-
-els.difficulty.addEventListener("change", () => state.currentDifficulty = els.difficulty.value);
-els.category.addEventListener("change",   () => state.currentCategory   = els.category.value);
+if (savedKey) apiKeyEl.value = savedKey;
+apiKeyEl.addEventListener("change", () => sessionStorage.setItem("soc_api_key", apiKeyEl.value));
