@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SOC Trainer v3.0 — Incident Response Practice Platform</title>
-  <meta name="description" content="Free, open-source SOC analyst training platform. Practice incident response, threat hunting, forensics, and more with AI-generated scenarios." />
+  <title>SOC Trainer v3.0</title>
+  <meta name="description" content="Free AI-powered SOC training platform — incident response, threat hunting, forensics, executive briefing, CTF." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -12,244 +12,331 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="toast" class="toast"></div>
 
-  <div class="shell">
-    <!-- ── SIDEBAR ─────────────────────────────────────────── -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-name">SOC TRAINER</span>
-          <span class="brand-version">v3.0</span>
-        </div>
-        <div class="status-dot" title="System online"></div>
-      </div>
+<div id="toast" class="toast"></div>
 
-      <div class="sidebar-divider"></div>
-
-      <div class="config-block">
-        <p class="config-label">API KEY</p>
-        <div class="api-input-wrap">
-          <input type="password" id="apiKey" placeholder="gsk_... or AIzaSy..." autocomplete="off" spellcheck="false" />
-          <a class="api-link" href="https://console.groq.com" target="_blank" rel="noopener" title="Get free Groq API key">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </a>
-        </div>
-        <p class="config-hint">Groq (gsk_) free at console.groq.com — stored in session only.</p>
-      </div>
-
-      <div class="config-block">
-        <p class="config-label">DIFFICULTY</p>
-        <select id="difficulty" class="select-field">
-          <option value="tier1">Tier 1 — Junior Analyst</option>
-          <option value="tier2" selected>Tier 2 — Mid-Level</option>
-          <option value="tier3">Tier 3 — Senior Analyst</option>
-          <option value="apt">APT — Nation-State Level</option>
-        </select>
-      </div>
-
-      <div class="config-block">
-        <p class="config-label">INCIDENT CATEGORY</p>
-        <select id="category" class="select-field">
-          <option value="ransomware" selected>Ransomware / Data Extortion</option>
-          <option value="apt">Advanced Persistent Threat</option>
-          <option value="insider">Insider Threat</option>
-          <option value="cloud">Cloud / SaaS Breach</option>
-          <option value="supply_chain">Supply Chain Attack</option>
-          <option value="web">Web Application Attack</option>
-        </select>
-      </div>
-
-      <div style="padding: 0 20px 16px;">
-        <button id="generateBtn" class="btn btn-generate">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          Generate Incident
-        </button>
-      </div>
-
-      <div class="sidebar-divider"></div>
-
-      <div class="stats-block">
-        <p class="config-label">SESSION STATS</p>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-value" id="sessionCount">0</span>
-            <span class="stat-label">Scenarios</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="avgScore">—</span>
-            <span class="stat-label">Avg Score</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="bestScore">—</span>
-            <span class="stat-label">Best</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="sidebar-divider"></div>
-
-      <div class="history-block">
-        <div class="history-header">
-          <p class="config-label">HISTORY</p>
-          <button id="clearBtn" class="btn-ghost-sm">Clear</button>
-        </div>
-        <div id="historyList" class="history-list">
-          <div class="history-empty">No sessions yet.</div>
-        </div>
-      </div>
-
-      <div class="sidebar-footer">
-        <button id="exportBtn" class="btn btn-ghost">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export
-        </button>
-        <a class="btn btn-ghost" href="https://github.com" target="_blank" rel="noopener">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          GitHub
-        </a>
-      </div>
-    </aside>
-
-    <!-- ── WORKSPACE ───────────────────────────────────────── -->
-    <main class="workspace">
-
-      <!-- TOPBAR -->
-      <div class="topbar">
-        <div class="topbar-left">
-          <span id="scenarioBadge" class="badge badge-neutral">IDLE</span>
-          <span class="topbar-sep">|</span>
-          <span id="topbarMode" class="topbar-mode">No mode selected</span>
-        </div>
-        <div class="topbar-right">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span id="timerDisplay" class="timer">00:00</span>
-        </div>
-      </div>
-
-      <!-- MAIN GRID -->
-      <div class="content-grid">
-
-        <!-- LEFT: Scenario -->
-        <section class="panel panel-scenario">
-          <div class="panel-head">
-            <div class="panel-head-left">
-              <span class="panel-icon">⚡</span>
-              <h2>Active Threat Scenario</h2>
-            </div>
-            <div class="panel-head-right">
-              <button id="hintBtn" class="btn-pill hidden" title="Reveal a hint">
-                💡 Hint (<span id="hintCount">3</span> left)
-              </button>
-            </div>
-          </div>
-          <div class="panel-body markdown-body" id="scenarioOutput">
-            <div class="idle-state">
-              <div class="idle-glyph">
-                <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-              <p>Configure your scenario above and click <strong>Generate Incident</strong>.</p>
-              <p class="idle-hint">AI-generated scenarios with real IOCs, Event IDs, business constraints, and MITRE ATT&CK mappings.</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- RIGHT: Mode + Response + Evaluation -->
-        <div class="right-col">
-
-          <!-- MODE SELECTOR -->
-          <section class="panel panel-mode" id="modePanel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="panel-icon">🎯</span>
-                <h2>Response Mode</h2>
-              </div>
-              <span class="panel-hint-text" id="modeHintText">Choose how you want to respond to this incident</span>
-            </div>
-            <div class="mode-grid" id="modeGrid">
-              <!-- Injected by JS -->
-            </div>
-          </section>
-
-          <!-- WRITING GUIDE -->
-          <section class="panel panel-guide hidden" id="guidePanel">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="panel-icon" id="guideIcon">📋</span>
-                <h2 id="guideTitle">Writing Guide</h2>
-              </div>
-              <button class="btn-pill" id="toggleGuide">Hide Guide</button>
-            </div>
-            <div class="guide-body" id="guideBody">
-              <!-- Injected by JS -->
-            </div>
-          </section>
-
-          <!-- RESPONSE PANEL -->
-          <section class="panel panel-response">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="panel-icon">✍️</span>
-                <h2 id="responseTitle">Your Response</h2>
-              </div>
-              <div class="panel-head-right">
-                <button id="frameworkToggle" class="btn-pill" title="Load structured template">
-                  📋 Template
-                </button>
-              </div>
-            </div>
-            <div class="textarea-wrap">
-              <textarea
-                id="responseInput"
-                class="response-textarea"
-                placeholder="Select a response mode above, then draft your answer here…"
-                disabled
-                spellcheck="false"
-              ></textarea>
-              <div class="textarea-footer">
-                <span id="charCount" class="char-count">0 chars</span>
-                <span id="modeLabel" class="mode-label-inline"></span>
-              </div>
-            </div>
-            <div class="panel-foot">
-              <button id="submitBtn" class="btn btn-submit" disabled>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
-                Submit for Evaluation
-              </button>
-            </div>
-          </section>
-
-          <!-- EVALUATION -->
-          <section class="panel panel-evaluation">
-            <div class="panel-head">
-              <div class="panel-head-left">
-                <span class="panel-icon">📡</span>
-                <h2>Commander Evaluation</h2>
-              </div>
-              <div id="scoreDisplay" class="score-display hidden">
-                <svg class="score-ring-svg" viewBox="0 0 88 88">
-                  <circle class="score-ring-bg" cx="44" cy="44" r="36"/>
-                  <circle id="scoreRing" class="score-ring-fg" cx="44" cy="44" r="36"/>
-                </svg>
-                <span id="scoreNumber" class="score-number">0</span>
-              </div>
-            </div>
-            <div class="panel-body markdown-body" id="evaluationOutput">
-              <div class="eval-idle">
-                <div class="eval-idle-icon">⌛</div>
-                <p>Submit your response to receive evaluation.</p>
-              </div>
-            </div>
-          </section>
-
-        </div>
-      </div>
-    </main>
+<!-- ══════════════════════════════════════════════════════════
+     TOP NAV BAR
+══════════════════════════════════════════════════════════ -->
+<header class="navbar">
+  <div class="navbar-brand">
+    <div class="brand-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <span class="brand-name">SOC TRAINER</span>
+    <span class="brand-ver">v3.0</span>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <!-- Step Navigator -->
+  <nav class="step-nav">
+    <button class="step-btn step-active" data-step="1" id="nav1">
+      <span class="step-num">01</span>
+      <span class="step-label">Configure &amp; Generate</span>
+    </button>
+    <div class="step-connector"></div>
+    <button class="step-btn" data-step="2" id="nav2" disabled>
+      <span class="step-num">02</span>
+      <span class="step-label">Analyze &amp; Respond</span>
+    </button>
+    <div class="step-connector"></div>
+    <button class="step-btn" data-step="3" id="nav3" disabled>
+      <span class="step-num">03</span>
+      <span class="step-label">Evaluation</span>
+    </button>
+  </nav>
+
+  <div class="navbar-right">
+    <div class="timer-chip">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="timerDisplay">00:00</span>
+    </div>
+    <span id="scenarioBadge" class="badge badge-neutral">IDLE</span>
+    <button id="exportBtn" class="navbar-btn" title="Export session">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <a href="https://github.com" target="_blank" class="navbar-btn" title="GitHub">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    </a>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP PAGES (one visible at a time)
+══════════════════════════════════════════════════════════ -->
+<div class="pages">
+
+  <!-- ────────────── STEP 1: Configure & Generate ────────────── -->
+  <div class="page page-active" id="page1">
+    <div class="step1-layout">
+
+      <!-- Config Column -->
+      <div class="config-col">
+        <div class="config-card">
+          <h3 class="config-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+            API Configuration
+          </h3>
+          <label class="field-label">API KEY</label>
+          <div class="api-row">
+            <input type="password" id="apiKey" class="field-input" placeholder="gsk_... or AIzaSy..." autocomplete="off" spellcheck="false" />
+            <a class="icon-btn" href="https://console.groq.com" target="_blank" rel="noopener" title="Get free Groq key">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+          <p class="field-hint">Free Groq key at <strong>console.groq.com</strong> — stored in session only, never sent anywhere else.</p>
+        </div>
+
+        <div class="config-card">
+          <h3 class="config-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Difficulty
+          </h3>
+          <div class="diff-grid" id="diffGrid">
+            <button class="diff-btn" data-diff="tier1">
+              <span class="diff-label">T1</span>
+              <span class="diff-name">Junior</span>
+            </button>
+            <button class="diff-btn diff-active" data-diff="tier2">
+              <span class="diff-label">T2</span>
+              <span class="diff-name">Mid-Level</span>
+            </button>
+            <button class="diff-btn" data-diff="tier3">
+              <span class="diff-label">T3</span>
+              <span class="diff-name">Senior</span>
+            </button>
+            <button class="diff-btn diff-apt" data-diff="apt">
+              <span class="diff-label">APT</span>
+              <span class="diff-name">Nation-State</span>
+            </button>
+          </div>
+          <p class="field-hint" id="diffHint">Moderate complexity — lateral movement, defense evasion, 2–3 log sources. ~20–30 min.</p>
+        </div>
+
+        <div class="config-card">
+          <h3 class="config-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Incident Category
+          </h3>
+          <div class="cat-grid" id="catGrid">
+            <button class="cat-btn cat-active" data-cat="ransomware">🔐 Ransomware</button>
+            <button class="cat-btn" data-cat="apt">🕵️ APT</button>
+            <button class="cat-btn" data-cat="insider">👤 Insider</button>
+            <button class="cat-btn" data-cat="cloud">☁️ Cloud Breach</button>
+            <button class="cat-btn" data-cat="supply_chain">📦 Supply Chain</button>
+            <button class="cat-btn" data-cat="web">🌐 Web App</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="config-card stats-card">
+          <h3 class="config-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Session Stats
+          </h3>
+          <div class="stats-row">
+            <div class="stat-box"><span id="sessionCount" class="stat-val">0</span><span class="stat-lbl">Scenarios</span></div>
+            <div class="stat-box"><span id="avgScore" class="stat-val">—</span><span class="stat-lbl">Avg Score</span></div>
+            <div class="stat-box"><span id="bestScore" class="stat-val">—</span><span class="stat-lbl">Best</span></div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="config-card history-card">
+          <div class="history-hdr">
+            <h3 class="config-card-title" style="margin:0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              History
+            </h3>
+            <button id="clearBtn" class="text-btn-danger">Clear</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <div class="history-empty">No sessions yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate Column -->
+      <div class="generate-col">
+        <div class="generate-hero">
+          <div class="hero-glyph">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.15">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h1 class="hero-title">SOC Incident Response Trainer</h1>
+          <p class="hero-sub">AI-generated cybersecurity scenarios evaluated against NIST, MITRE ATT&amp;CK, and SANS DFIR frameworks. Five response modes. Brutal honest feedback.</p>
+
+          <div class="mode-preview-grid">
+            <div class="mode-preview">🛡️ <span>Incident Response</span></div>
+            <div class="mode-preview">🔍 <span>Threat Hunt</span></div>
+            <div class="mode-preview">🕵️ <span>Forensics</span></div>
+            <div class="mode-preview">📊 <span>Executive Briefing</span></div>
+            <div class="mode-preview">🚩 <span>CTF / Flag Hunt</span></div>
+          </div>
+
+          <button id="generateBtn" class="btn-generate-hero">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Generate Incident
+          </button>
+          <p class="hero-hint">Configure difficulty and category on the left, then click Generate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 2: Analyze & Respond ───────────────── -->
+  <div class="page" id="page2">
+    <div class="step2-layout">
+
+      <!-- Scenario Panel (left, fixed) -->
+      <div class="scenario-col">
+        <div class="panel-header-bar">
+          <span class="panel-header-icon">⚡</span>
+          <span class="panel-header-title">Active Threat Scenario</span>
+          <button id="hintBtn" class="hint-btn hidden">
+            💡 Hint <span class="hint-badge" id="hintCount">3</span>
+          </button>
+        </div>
+        <div class="scenario-body markdown-body" id="scenarioOutput">
+          <div class="idle-msg">Generate an incident to begin.</div>
+        </div>
+      </div>
+
+      <!-- Right: Mode + Guide + Response -->
+      <div class="respond-col">
+
+        <!-- Mode Selector -->
+        <div class="respond-section">
+          <div class="respond-section-hdr">
+            <span class="respond-section-title">🎯 Choose Response Mode</span>
+            <span class="respond-section-sub">This determines how the AI will evaluate your submission</span>
+          </div>
+          <div class="mode-row" id="modeGrid">
+            <!-- JS injected -->
+          </div>
+        </div>
+
+        <!-- Writing Guide (collapsible) -->
+        <div class="respond-section guide-section hidden" id="guideSection">
+          <div class="respond-section-hdr clickable" id="guideToggleHdr">
+            <span class="respond-section-title" id="guideTitle">📋 Writing Guide</span>
+            <button class="collapse-btn" id="guideCollapseBtn">▼ Hide</button>
+          </div>
+          <div class="guide-cards" id="guideBody"></div>
+        </div>
+
+        <!-- Response Textarea -->
+        <div class="respond-section response-section">
+          <div class="respond-section-hdr">
+            <span class="respond-section-title" id="responseTitle">✍️ Your Response</span>
+            <div class="respond-section-actions">
+              <button id="frameworkToggle" class="action-btn">📋 Template</button>
+              <span id="charCount" class="char-pill">0 chars</span>
+            </div>
+          </div>
+          <textarea
+            id="responseInput"
+            class="response-ta"
+            placeholder="Select a response mode above to begin…"
+            disabled
+            spellcheck="false"
+          ></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-bar">
+          <div class="submit-bar-left">
+            <span id="modeActiveLabel" class="mode-active-label">No mode selected</span>
+          </div>
+          <button id="submitBtn" class="btn-submit" disabled>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            Submit for Evaluation
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────────── STEP 3: Evaluation ─────────────────────── -->
+  <div class="page" id="page3">
+    <div class="step3-layout">
+
+      <!-- Score Hero -->
+      <div class="eval-hero-col">
+        <div class="score-hero">
+          <div class="score-ring-wrap">
+            <svg class="score-ring-svg" viewBox="0 0 160 160">
+              <circle class="score-ring-bg" cx="80" cy="80" r="68"/>
+              <circle id="scoreRing" class="score-ring-fg" cx="80" cy="80" r="68"/>
+            </svg>
+            <div class="score-center">
+              <span id="scoreNumber" class="score-big">—</span>
+              <span class="score-denom">/10</span>
+            </div>
+          </div>
+          <div id="scoreDisplay" class="score-verdict hidden">
+            <span id="scoreVerdict" class="verdict-text"></span>
+          </div>
+        </div>
+
+        <div class="eval-meta">
+          <div class="eval-meta-item">
+            <span class="eval-meta-label">Mode</span>
+            <span id="evalMode" class="eval-meta-val">—</span>
+          </div>
+          <div class="eval-meta-item">
+            <span class="eval-meta-label">Category</span>
+            <span id="evalCategory" class="eval-meta-val">—</span>
+          </div>
+          <div class="eval-meta-item">
+            <span class="eval-meta-label">Difficulty</span>
+            <span id="evalDifficulty" class="eval-meta-val">—</span>
+          </div>
+          <div class="eval-meta-item">
+            <span class="eval-meta-label">Response Time</span>
+            <span id="evalTime" class="eval-meta-val">—</span>
+          </div>
+        </div>
+
+        <div class="eval-actions">
+          <button class="eval-action-btn" id="tryAgainBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            New Scenario
+          </button>
+          <button class="eval-action-btn" id="reReviewBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Revise Response
+          </button>
+        </div>
+      </div>
+
+      <!-- Evaluation Content -->
+      <div class="eval-content-col">
+        <div class="panel-header-bar">
+          <span class="panel-header-icon">📡</span>
+          <span class="panel-header-title">Commander Evaluation</span>
+        </div>
+        <div class="eval-body markdown-body" id="evaluationOutput">
+          <div class="idle-msg">Submit your response to receive evaluation.</div>
+        </div>
+      </div>
+
+      <!-- Scenario Recap (collapsible) -->
+      <div class="eval-scenario-col">
+        <div class="panel-header-bar clickable" id="scenarioRecapHdr">
+          <span class="panel-header-icon">⚡</span>
+          <span class="panel-header-title">Scenario Recap</span>
+          <button class="collapse-btn" id="scenarioRecapBtn">▼</button>
+        </div>
+        <div class="eval-scenario-body markdown-body hidden" id="scenarioRecap"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /pages -->
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
