@@ -5,10 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SOC Trainer v3.0</title>
   <meta name="description" content="Free AI-powered SOC training platform — incident response, threat hunting, forensics, executive briefing, CTF." />
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src https://api.groq.com https://api.anthropic.com https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self';" />
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- DOMPurify — XSS sanitization (load before marked) -->
+  <!-- NOTE: Add integrity="sha384-[hash]" crossorigin="anonymous" for production -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" crossorigin="anonymous"></script>
+
+  <!-- Marked.js — Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" crossorigin="anonymous"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -240,6 +251,7 @@
             placeholder="Select a response mode above to begin…"
             disabled
             spellcheck="false"
+          maxlength="8000"
           ></textarea>
         </div>
 
