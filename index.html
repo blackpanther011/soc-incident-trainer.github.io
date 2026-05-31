@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOC Trainer — Incident Command</title>
+<meta name="description" content="AI-powered SOC incident response trainer — a war-room console for practicing detection, containment, forensics, threat hunting and executive briefing." />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src https://api.groq.com https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'self';" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="theme.css" />
+</head>
+<body data-threat="idle">
+
+<div class="atmos"><div class="glow"></div><div class="grid"></div><div class="scan"></div></div>
+<div id="toast" class="toast"></div>
+
+<!-- ══════════ TOP HUD ══════════ -->
+<header class="hud-top">
+  <div class="brand">
+    <div class="mk"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <div style="display:flex;flex-direction:column;gap:2px;line-height:1">
+      <span class="nm">SOC TRAINER</span>
+      <span class="sub">INCIDENT COMMAND</span>
+    </div>
+  </div>
+
+  <nav class="steps">
+    <button class="step active" id="nav1" data-step="1"><span class="num">01</span><span class="lbl">Mission Setup</span></button>
+    <div class="step-line"></div>
+    <button class="step" id="nav2" data-step="2" disabled><span class="num">02</span><span class="lbl">Analyze &amp; Respond</span></button>
+    <div class="step-line"></div>
+    <button class="step" id="nav3" data-step="3" disabled><span class="num">03</span><span class="lbl">Evaluation</span></button>
+  </nav>
+
+  <div class="hud-right">
+    <div class="clock">
+      <div class="seg"><span class="v" id="clockElapsed">00:00</span><span class="k">ELAPSED</span></div>
+      <div class="div"></div>
+      <div class="seg"><span class="v" id="clockSecondary" style="color:var(--t2)">—</span><span class="k" id="clockSecondaryLabel">STATUS</span></div>
+    </div>
+    <div class="statuschip idle" id="statusChip"><span class="sq"></span><span id="statusText">STANDBY</span></div>
+    <button class="iconbtn" id="exportBtn" title="Export session as Markdown"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+    <div class="rankbox">
+      <div class="bd" id="hudRankBadge">R</div>
+      <div class="m"><span class="t" id="hudRankTier">Recruit</span><span class="x" id="hudRankXp">0 XP</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════ STAGES ══════════ -->
+<div class="stages">
+
+  <!-- ───── STEP 1 — MISSION SETUP ───── -->
+  <section class="stage on" id="stage1" data-screen-label="01 · Mission Setup">
+    <div class="s1 zones">
+
+      <!-- LEFT: CONFIG -->
+      <div class="s1-col left">
+        <div class="s1-pad">
+          <div class="card">
+            <div class="card-hd">
+              <div class="ci"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+              <span class="ct">Access</span>
+            </div>
+            <label class="field-label" for="apiKey">API KEY · optional</label>
+            <div class="api-row">
+              <input type="password" id="apiKey" class="input" placeholder="gsk_… or AIzaSy…" autocomplete="off" spellcheck="false" />
+              <a class="iconbtn" href="https://console.groq.com/keys" target="_blank" rel="noopener" title="Get a free Groq key"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+            </div>
+            <div class="demo-row">
+              <div class="dl"><span class="a">Demo Mode</span><span class="b">Run with no key — baked incidents &amp; grading</span></div>
+              <div class="toggle on" id="demoToggle"><span class="kn"></span></div>
+            </div>
+            <p class="hint">Free Groq key at <b>console.groq.com</b> — kept in this tab only, never stored or sent elsewhere. Leave Demo on to try the full flow instantly.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">
+              <div class="ci"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+              <span class="ct">Threat Tier</span>
+            </div>
+            <div class="diff-grid" id="diffGrid">
+              <button class="diff" data-diff="tier1"><span class="dk">T1</span><span class="dn">Junior</span></button>
+              <button class="diff on" data-diff="tier2"><span class="dk">T2</span><span class="dn">Mid-Level</span></button>
+              <button class="diff" data-diff="tier3"><span class="dk">T3</span><span class="dn">Senior</span></button>
+              <button class="diff apt" data-diff="apt"><span class="dk">APT</span><span class="dn">Nation-State</span></button>
+            </div>
+            <p class="hint" id="diffHint">Moderate complexity — lateral movement, defense evasion, 2–3 log sources. ~20–30 min.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">
+              <div class="ci"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+              <span class="ct">Incident Class</span>
+            </div>
+            <div class="cat-grid" id="catGrid">
+              <button class="cat on" data-cat="ransomware"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>Ransomware</button>
+              <button class="cat" data-cat="apt"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg></span>APT</button>
+              <button class="cat" data-cat="insider"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></span>Insider</button>
+              <button class="cat" data-cat="cloud"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg></span>Cloud Breach</button>
+              <button class="cat" data-cat="supply_chain"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22" x2="12" y2="12"/></svg></span>Supply Chain</button>
+              <button class="cat" data-cat="web"><span class="cic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span>Web App</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: STANDBY HERO -->
+      <div class="s1-col center">
+        <div class="standby">
+          <div class="glyph">
+            <div class="ring"></div><div class="ring r2"></div><div class="ring r3"></div>
+            <span class="ic"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          </div>
+          <div>
+            <div class="kicker">System Standby</div>
+            <h1 style="margin-top:12px">Incident Response Range</h1>
+          </div>
+          <p class="lede">AI-generated incidents with real IOCs, Event IDs and ATT&amp;CK techniques — evaluated against NIST, MITRE and SANS DFIR. Five engagement modes. Brutally honest feedback.</p>
+          <div class="roster">
+            <div class="rchip" style="--mc:#ff7a1a"><span class="ric"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Incident Response</div>
+            <div class="rchip" style="--mc:#a78bfa"><span class="ric"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>Threat Hunt</div>
+            <div class="rchip" style="--mc:#34d8ea"><span class="ric"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>Forensics</div>
+            <div class="rchip" style="--mc:#3ce698"><span class="ric"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>Exec Brief</div>
+            <div class="rchip" style="--mc:#ffc23d"><span class="ric"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>CTF Hunt</div>
+          </div>
+          <button class="btn btn-threat" id="generateBtn" style="font-size:15px;padding:16px 38px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Initiate Incident
+          </button>
+          <div class="ready"><span class="d"></span><span id="readyLine">Range armed · Demo mode · Tier 2 · Ransomware</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: OPERATOR DOSSIER -->
+      <div class="s1-col right">
+        <div class="s1-pad">
+          <div class="seg-label">Operator Dossier</div>
+          <div class="dossier-rank">
+            <div class="big-bd" id="dossierBadge">R</div>
+            <div class="rm">
+              <span class="rt" id="dossierTier">Recruit</span>
+              <span class="rx" id="dossierXp">0 XP</span>
+              <div class="xpbar"><div class="fill" id="xpBarFill" style="width:4%"></div></div>
+              <span class="rx" id="xpNextLabel">500 XP to Analyst I</span>
+            </div>
+          </div>
+          <div class="stat-grid">
+            <div class="statbox"><span class="sv" id="statSessions">0</span><span class="sl">Incidents</span></div>
+            <div class="statbox"><span class="sv green" id="statAvg">—</span><span class="sl">Avg Score</span></div>
+            <div class="statbox"><span class="sv warn" id="statBest">—</span><span class="sl">Best</span></div>
+            <div class="statbox"><span class="sv" id="statStreak">0</span><span class="sl">Streak</span></div>
+          </div>
+          <div class="seg-label" style="margin-top:6px">Skill Profile</div>
+          <div class="radar-card brk"><div id="skillRadar"></div></div>
+          <div class="seg-label" style="margin-top:6px">Recent Operations
+            <button class="text-link" id="clearBtn" style="margin-left:auto">Clear</button>
+          </div>
+          <div class="history-list" id="historyList">
+            <div class="history-empty">No operations logged yet.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ───── STEP 2 — WAR ROOM ───── -->
+  <section class="stage" id="stage2" data-screen-label="02 · Analyze &amp; Respond">
+    <div class="s2 zones">
+
+      <!-- LEFT: MISSION STATUS -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">01</span><span class="tl">Mission Status</span></div>
+        <div class="zone-body">
+          <div class="gauge-wrap brk brk-o">
+            <div class="gauge">
+              <svg viewBox="0 0 172 172"><circle class="ring-bg" cx="86" cy="86" r="72"/><circle class="ring-fg" id="sevRing" cx="86" cy="86" r="72" stroke="var(--orange)" stroke-dasharray="452" stroke-dashoffset="452"/></svg>
+              <div class="sweep" id="sevSweep" style="border-top-color:var(--orange)"></div>
+              <div class="ctr">
+                <span class="lb">SEVERITY</span>
+                <span class="big" id="sevBig" style="color:var(--orange)">—</span>
+                <span class="sub" id="sevSub" style="color:var(--orange)">ASSESSING</span>
+              </div>
+            </div>
+          </div>
+          <div class="stat-rows">
+            <div class="srow"><span class="k"><span class="i" style="background:var(--orange)"></span>Incident Class</span><span class="v" id="s2Cat">—</span></div>
+            <div class="srow"><span class="k"><span class="i" style="background:var(--cyan)"></span>Threat Tier</span><span class="v" id="s2Diff">—</span></div>
+            <div class="srow"><span class="k"><span class="i" style="background:var(--green)"></span>Framework</span><span class="v" id="s2Framework" style="font-size:11px">NIST 800-61</span></div>
+          </div>
+          <div class="objectives" id="objectives">
+            <div class="seg-label">Response Objectives</div>
+            <div class="obj" data-obj="triage"><span class="ck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>Triage the initial alert</div>
+            <div class="obj" data-obj="killchain"><span class="ck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>Map the kill chain</div>
+            <div class="obj" data-obj="mode"><span class="ck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>Choose an engagement mode</div>
+            <div class="obj" data-obj="draft"><span class="ck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>Draft your response</div>
+            <div class="obj" data-obj="submit"><span class="ck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>Transmit for evaluation</div>
+          </div>
+          <div>
+            <div class="seg-label" style="margin-bottom:10px">Activity Log <span class="estream-live" style="margin-left:auto"><span class="d"></span>LIVE</span></div>
+            <div class="estream" id="eventStream"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: INTEL FEED -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">02</span><span class="tl">Intel Feed</span><button class="hint-btn hidden" id="hintBtn">Request Hint <span class="n" id="hintCount">3</span></button></div>
+        <div class="zone-body" id="scenarioOutput">
+          <div class="idle-msg"><span class="ig"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Initiate an incident to receive intel.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: RESPONSE UPLINK -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">03</span><span class="tl">Response Uplink</span><span class="rt" id="uplinkFramework">STANDBY</span></div>
+        <div class="zone-body">
+          <div>
+            <div class="seg-label o">Engagement Mode</div>
+            <div class="modes" id="modeGrid" style="margin-top:11px"></div>
+          </div>
+
+          <div class="guide hidden" id="guideSection">
+            <div class="seg-label" id="guideToggle" style="cursor:pointer">
+              <span id="guideTitle">Writing Guide</span>
+              <button class="collapse-btn" id="guideCollapseBtn" style="margin-left:auto">▼ HIDE</button>
+            </div>
+            <div class="guide-cards" id="guideBody"></div>
+          </div>
+
+          <div class="uplink-field">
+            <div class="uf-hd">
+              <span class="l" id="responseTitle">Response <span class="tag hidden" id="responseTag">STANDBY</span></span>
+              <div class="uf-actions">
+                <button class="tmpl-btn" id="templateBtn">⌘ Template</button>
+                <span class="chars" id="charCount">0 chars</span>
+              </div>
+            </div>
+            <div class="console-wrap brk">
+              <textarea id="responseInput" class="console-ta" placeholder="Select an engagement mode above to begin transmission…" disabled spellcheck="false" maxlength="8000"></textarea>
+            </div>
+            <div class="transmit-bar">
+              <div class="tm-meta" id="submitMeta"><span class="d"></span><span id="submitMetaText">No mode selected</span></div>
+              <button class="btn btn-threat" id="submitBtn" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>Transmit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ───── STEP 3 — EVALUATION ───── -->
+  <section class="stage" id="stage3" data-screen-label="03 · Evaluation">
+    <div class="s3 zones">
+
+      <!-- LEFT: SCORE -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">01</span><span class="tl">Assessment</span></div>
+        <div class="zone-body">
+          <div class="gauge-wrap brk brk-g">
+            <div class="gauge">
+              <svg viewBox="0 0 172 172"><circle class="ring-bg" cx="86" cy="86" r="72"/><circle class="ring-fg" id="scoreRing" cx="86" cy="86" r="72" stroke="var(--green)" stroke-dasharray="452" stroke-dashoffset="452"/></svg>
+              <div class="ctr">
+                <span class="lb">SCORE</span>
+                <span class="big" id="scoreBig" style="color:var(--green)">—</span>
+                <span class="denom">/ 10</span>
+              </div>
+            </div>
+            <div class="verdict">
+              <span class="vt" id="verdictText">Awaiting evaluation</span>
+              <span class="vs" id="verdictSub"></span>
+            </div>
+          </div>
+          <div class="xp-earned">
+            <div class="xtop"><span class="xl">XP Earned</span><span class="xv" id="xpEarnedVal">+0</span></div>
+            <div class="xpbar"><div class="fill" id="xpRankProg" style="width:4%"></div></div>
+            <div class="xrank"><span id="xpRankNow">Recruit</span><span id="xpRankLabel">500 XP to Analyst I</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: COMMANDER EVAL -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">02</span><span class="tl">Commander Evaluation</span><span class="rt" id="evalFrameworkRt">—</span></div>
+        <div class="zone-body" id="evaluationOutput">
+          <div class="idle-msg">Transmit your response to receive evaluation.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: META + RECAP + ACTIONS -->
+      <div class="zone">
+        <div class="zone-hd"><span class="tk">03</span><span class="tl">Debrief</span></div>
+        <div class="zone-body">
+          <div class="seg-label">Engagement Record</div>
+          <div class="eval-meta">
+            <div class="emrow"><span class="ek">Mode</span><span class="ev" id="evalMode">—</span></div>
+            <div class="emrow"><span class="ek">Class</span><span class="ev" id="evalCategory">—</span></div>
+            <div class="emrow"><span class="ek">Tier</span><span class="ev" id="evalDifficulty">—</span></div>
+            <div class="emrow"><span class="ek">Response Time</span><span class="ev mono" id="evalTime">—</span></div>
+          </div>
+          <div class="recap-toggle" id="recapToggle">
+            <span class="seg-label" style="color:var(--t2)">Scenario Recap</span>
+            <span class="rci" id="recapIcon">▶</span>
+          </div>
+          <div class="recap-body md hidden" id="recapBody"></div>
+          <div class="seg-label" style="margin-top:6px">Next Move</div>
+          <div class="eval-actions">
+            <button class="btn btn-primary" id="newScenarioBtn" style="width:100%"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>New Incident</button>
+            <button class="btn btn-ghost" id="reviseBtn" style="width:100%"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Revise Response</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
