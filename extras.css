@@ -1,0 +1,111 @@
+/* ============================================================
+   SOC TRAINER v5 — additions: operator auth, score breakdown,
+   SIEM-density raw log viewer. Uses theme.css design tokens.
+   ============================================================ */
+
+/* ─── Operator auth modal ─────────────────────────────────── */
+.auth-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 10, 13, .82); backdrop-filter: blur(6px);
+}
+.auth-modal {
+  width: min(380px, calc(100vw - 32px));
+  background: var(--bg-1); border: 1px solid var(--line-2);
+  border-radius: var(--r-lg); padding: 28px 26px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
+}
+.auth-mk {
+  width: 44px; height: 44px; margin: 0 auto; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid var(--accent-line);
+}
+.auth-title {
+  font-family: var(--hud); font-size: 15px; font-weight: 700;
+  letter-spacing: .14em; text-align: center; color: var(--t1);
+}
+.auth-sub { font-size: 12px; color: var(--t2); text-align: center; line-height: 1.5; margin-top: -8px; }
+.auth-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r); padding: 4px;
+}
+.auth-tabs button {
+  font-family: var(--hud); font-size: 12px; letter-spacing: .08em;
+  padding: 8px 0; border: 0; border-radius: 5px; cursor: pointer;
+  background: transparent; color: var(--t3);
+}
+.auth-tabs button.on { background: var(--accent-dim); color: var(--accent); }
+.auth-form { display: flex; flex-direction: column; gap: 11px; }
+.auth-form label {
+  display: flex; flex-direction: column; gap: 6px;
+  font-family: var(--hud); font-size: 10px; letter-spacing: .14em; color: var(--t3);
+}
+.auth-err {
+  font-size: 12px; color: var(--crit); background: var(--crit-dim);
+  border: 1px solid var(--crit-line); border-radius: var(--r); padding: 8px 11px;
+}
+.auth-guest {
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--hud); font-size: 11px; letter-spacing: .1em; color: var(--t2);
+  padding: 4px;
+}
+.auth-guest:hover { color: var(--accent); }
+.auth-note { font-size: 10.5px; color: var(--t3); text-align: center; line-height: 1.5; }
+
+/* ─── HUD operator chip ───────────────────────────────────── */
+.operator-chip {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg-2); border: 1px solid var(--line-2); border-radius: var(--r);
+  padding: 7px 11px; cursor: pointer; color: var(--t2);
+  font-family: var(--hud); font-size: 11px; letter-spacing: .06em;
+}
+.operator-chip span { color: var(--t1); font-weight: 600; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.operator-chip small { font-size: 8.5px; letter-spacing: .12em; color: var(--t3); }
+.operator-chip:hover { border-color: var(--accent-line); color: var(--accent); }
+.operator-chip:hover small { color: var(--accent); }
+
+/* ─── Score breakdown (Evaluation stage) ──────────────────── */
+.score-breakdown { display: flex; flex-direction: column; gap: 11px; }
+.score-breakdown:empty { display: none; }
+.sb-head { display: flex; align-items: center; justify-content: space-between; }
+.sb-grade {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--hud); font-size: 19px; font-weight: 700; color: var(--gc, var(--t1));
+}
+.sb-grade small { font-size: 9.5px; letter-spacing: .1em; color: var(--t3); font-weight: 500; }
+.sb-row { display: flex; flex-direction: column; gap: 4px; }
+.sb-top { display: flex; justify-content: space-between; align-items: baseline; }
+.sb-k { font-family: var(--hud); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--t2); }
+.sb-k em { font-style: normal; color: var(--t3); font-size: 9px; margin-left: 4px; }
+.sb-v { font-size: 12px; font-weight: 700; color: var(--t1); }
+.sb-bar { height: 5px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.sb-fill { height: 100%; width: 0; border-radius: 3px; transition: width .9s cubic-bezier(.22, 1, .36, 1); }
+.sb-fill.grow { width: var(--w, 0%); }
+.sb-detail { font-size: 10.5px; color: var(--t3); }
+
+/* ─── SIEM-density raw log viewer ─────────────────────────────
+   Targets fenced code blocks in the intel feed / recap so AI-
+   generated raw logs read like a real log viewer: dense mono,
+   zebra-striped lines, contained scroll, no wrapping. */
+#scenarioOutput pre, .recap-body pre {
+  background:
+    repeating-linear-gradient(to bottom,
+      transparent 0 17px, rgba(255, 255, 255, .022) 17px 34px),
+    var(--bg-0);
+  background-attachment: local, scroll;
+  border: 1px solid var(--line-2); border-left: 2px solid var(--accent-line);
+  border-radius: var(--r); padding: 10px 12px; margin: 10px 0;
+  max-height: 300px; overflow: auto;
+}
+#scenarioOutput pre code, .recap-body pre code {
+  display: block; background: none; padding: 0; border: 0;
+  font-family: var(--mono); font-size: 10.5px; line-height: 17px;
+  color: var(--t1); white-space: pre; tab-size: 4;
+}
+/* thin scrollbars inside log blocks */
+#scenarioOutput pre::-webkit-scrollbar, .recap-body pre::-webkit-scrollbar { width: 7px; height: 7px; }
+#scenarioOutput pre::-webkit-scrollbar-thumb, .recap-body pre::-webkit-scrollbar-thumb {
+  background: var(--line-3); border-radius: 4px;
+}
